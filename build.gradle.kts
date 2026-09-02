@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.postguy"
-version = "0.0.1"
+version = "1.0.0-beta.1"
 
 application {
     mainClass = "io.ktor.server.netty.EngineMain"
@@ -35,9 +35,11 @@ tasks.register<Exec>("frontendBuild") {
     dependsOn("frontendInstall")
     workingDir = frontendDir
     commandLine(shell + "npm run build")
+    environment("VITE_APP_VERSION", project.version.toString())
     inputs.dir("frontend/src")
     inputs.dir("frontend/public")
     inputs.files("frontend/index.html", "frontend/vite.config.ts", "frontend/tsconfig.json")
+    inputs.property("appVersion", project.version.toString())
     outputs.dir(frontendDist)
 }
 

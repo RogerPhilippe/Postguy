@@ -35,7 +35,7 @@ export function StatusBar() {
         </>
       )}
       <div className="ml-auto text-text-muted">
-        Postguy v1.0.0
+        Postguy v{import.meta.env.VITE_APP_VERSION ?? 'dev'}
       </div>
     </div>
   );
