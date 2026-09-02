@@ -3,7 +3,10 @@ import axios from 'axios';
 import { useTabsStore } from '../store/tabsStore';
 import { useHistoryStore } from '../store/historyStore';
 import { useConsoleStore } from '../store/consoleStore';
+import { useEnvironmentsStore } from '../store/environmentsStore';
 import { ResponseData } from '../types/response';
+import { RequestConfig } from '../types/request';
+import { resolveVariables } from '../utils/resolveVariables';
 import { useT } from '../i18n/useT';
 
 interface ProxyResponse {
@@ -27,13 +30,16 @@ export function useSendRequest(tabId: string) {
   const setTabResponse = useTabsStore((state) => state.setTabResponse);
   const addToHistory = useHistoryStore((state) => state.addToHistory);
   const addEntry = useConsoleStore((state) => state.addEntry);
+  const activeVariables = useEnvironmentsStore(
+    (state) => state.environments.find((e) => e.id === state.activeEnvironmentId)?.variables ?? []
+  );
   const t = useT();
 
   const send = useCallback(async () => {
     if (!tab) return;
-    const { request } = tab;
+    const { request: original } = tab;
 
-    if (!request.url || request.url.trim() === '') {
+    if (!original.url || original.url.trim() === '') {
       addEntry({
         level: 'error',
         message: t('log.urlEmpty'),
@@ -41,6 +47,22 @@ export function useSendRequest(tabId: string) {
       });
       return;
     }
+
+    const request: RequestConfig = {
+      ...original,
+      url: resolveVariables(original.url, activeVariables),
+      params: original.params.map((p) => ({
+        ...p,
+        key: resolveVariables(p.key, activeVariables),
+        value: resolveVariables(p.value, activeVariables),
+      })),
+      headers: original.headers.map((h) => ({
+        ...h,
+        key: resolveVariables(h.key, activeVariables),
+        value: resolveVariables(h.value, activeVariables),
+      })),
+      body: resolveVariables(original.body, activeVariables),
+    };
 
     setTabLoading(tabId, true);
 
@@ -125,7 +147,7 @@ export function useSendRequest(tabId: string) {
         });
       }
     }
-  }, [tab, tabId, setTabLoading, setTabResponse, addToHistory, addEntry, t]);
+  }, [tab, tabId, setTabLoading, setTabResponse, addToHistory, addEntry, activeVariables, t]);
 
   return {
     send,

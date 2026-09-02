@@ -79,14 +79,14 @@ export function KeyValueTable({
             value={pair.key}
             onChange={(e) => handleKeyChange(pair.id, e.target.value)}
             placeholder={resolvedKeyPlaceholder}
-            className="px-3 py-1.5 text-xs font-mono bg-transparent text-text-primary placeholder-text-muted focus:outline-none focus:bg-panel-light/50 transition-colors border-r border-border/50"
+            className="min-w-0 w-full px-3 py-1.5 text-xs font-mono bg-transparent text-text-primary placeholder-text-muted focus:outline-none focus:bg-panel-light/50 transition-colors border-r border-border/50"
           />
           <input
             type="text"
             value={pair.value}
             onChange={(e) => handleValueChange(pair.id, e.target.value)}
             placeholder={resolvedValuePlaceholder}
-            className="px-3 py-1.5 text-xs font-mono bg-transparent text-text-primary placeholder-text-muted focus:outline-none focus:bg-panel-light/50 transition-colors"
+            className="min-w-0 w-full px-3 py-1.5 text-xs font-mono bg-transparent text-text-primary placeholder-text-muted focus:outline-none focus:bg-panel-light/50 transition-colors"
           />
           <div className="flex items-center px-2 border-l border-border/50">
             <button

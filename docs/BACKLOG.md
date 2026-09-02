@@ -60,3 +60,24 @@ the browser — a plain file response/upload.
 - Where the `.db` file lives on disk (next to the jar? configurable path
   in `application.yaml`?), and what a minimal migration/schema story looks
   like given there's no such tooling in the project today.
+
+## Technical debt: variables aren't picked up from external collection imports
+
+Postguy now supports Environments (named sets of `{{key}}` variables,
+resolved at send time from whichever environment is active — see
+`environmentsStore.ts` and `utils/resolveVariables.ts`). The external
+collection importer (`utils/externalCollectionImport.ts`) does not extract
+any variable definitions from an imported file, even though the common
+nested collection format it supports can carry them in two different
+places:
+
+- A `variable` array embedded directly in the collection JSON itself
+  (travels with the file the importer already reads) — not extracted.
+- A separate "environment" export file (a different top-level shape
+  entirely, not the `info`/`item` collection shape) — not detected or
+  imported at all.
+
+Deferred deliberately to keep the Environments feature scoped. A request
+imported from such a file will carry its `{{...}}` placeholders literal
+and unresolved until the user manually recreates the matching variables in
+an Environment.

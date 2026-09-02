@@ -11,22 +11,29 @@ import {
   FolderPlus,
   FolderInput,
   Download,
+  Upload,
   Pencil,
   X,
   Check,
   Save,
+  Layers,
+  Circle,
+  Plus,
 } from 'lucide-react';
 import { useHistoryStore } from '../../store/historyStore';
 import { useCollectionsStore } from '../../store/collectionsStore';
+import { useEnvironmentsStore } from '../../store/environmentsStore';
 import { useTabsStore } from '../../store/tabsStore';
 import { HistoryEntry } from '../../types/history';
 import { Collection, CollectionItem } from '../../types/collection';
+import { Environment } from '../../types/environment';
 import { RequestConfig } from '../../types/request';
 import { formatDate } from '../../utils/formatter';
 import { HttpMethod } from '../../types/request';
 import { useT } from '../../i18n/useT';
 import { downloadJson, sanitizeFilename } from '../../utils/fileExport';
 import { convertExternalCollection, isExternalCollectionFormat } from '../../utils/externalCollectionImport';
+import { KeyValueTable } from '../request/KeyValueTable';
 
 const METHOD_COLORS: Record<HttpMethod, string> = {
   GET: 'text-emerald-400',
@@ -257,6 +264,214 @@ function HistorySection() {
                     />
                   )}
                 </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function EnvironmentRow({ environment, isActive }: { environment: Environment; isActive: boolean }) {
+  const renameEnvironment = useEnvironmentsStore((state) => state.renameEnvironment);
+  const deleteEnvironment = useEnvironmentsStore((state) => state.deleteEnvironment);
+  const setVariables = useEnvironmentsStore((state) => state.setVariables);
+  const setActiveEnvironment = useEnvironmentsStore((state) => state.setActiveEnvironment);
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(environment.name);
+  const t = useT();
+
+  const commitRename = () => {
+    renameEnvironment(environment.id, name);
+    setEditing(false);
+  };
+
+  return (
+    <div>
+      <div className="group flex items-center gap-1.5 px-3 py-2 hover:bg-panel-light transition-colors">
+        <button
+          onClick={() => setActiveEnvironment(isActive ? null : environment.id)}
+          className="flex-shrink-0"
+          title={t('environments.setActive')}
+        >
+          <Circle size={10} className={isActive ? 'text-accent fill-current' : 'text-text-muted'} />
+        </button>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
+        >
+          {editing ? (
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename();
+                if (e.key === 'Escape') setEditing(false);
+              }}
+              onBlur={commitRename}
+              className="flex-1 bg-app-bg border border-border rounded px-1.5 py-0.5 text-xs text-text-primary focus:outline-none focus:border-accent"
+            />
+          ) : (
+            <span className="text-xs text-text-primary truncate">{environment.name}</span>
+          )}
+          {environment.variables.length > 0 && (
+            <span className="text-[10px] text-text-muted flex-shrink-0">
+              {environment.variables.length}
+            </span>
+          )}
+        </button>
+        <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
+          <button
+            onClick={() =>
+              downloadJson(`${sanitizeFilename(environment.name)}.json`, {
+                name: environment.name,
+                variables: environment.variables,
+              })
+            }
+            className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-panel"
+            title={t('environments.exportEnvironment')}
+          >
+            <Download size={11} />
+          </button>
+          <button
+            onClick={() => setEditing(true)}
+            className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-panel"
+            title={t('sidebar.rename')}
+          >
+            <Pencil size={11} />
+          </button>
+          <button
+            onClick={() => deleteEnvironment(environment.id)}
+            className="p-1 rounded text-text-muted hover:text-red-400 hover:bg-panel"
+            title={t('environments.deleteEnvironment')}
+          >
+            <Trash2 size={11} />
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="pl-6 pb-1">
+          <KeyValueTable
+            pairs={environment.variables}
+            onChange={(vars) => setVariables(environment.id, vars)}
+            addLabel={t('environments.addVariable')}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EnvironmentsSection() {
+  const environments = useEnvironmentsStore((state) => state.environments);
+  const activeEnvironmentId = useEnvironmentsStore((state) => state.activeEnvironmentId);
+  const createEnvironment = useEnvironmentsStore((state) => state.createEnvironment);
+  const importEnvironment = useEnvironmentsStore((state) => state.importEnvironment);
+  const [isOpen, setIsOpen] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const t = useT();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCreate = () => {
+    if (!newName.trim()) {
+      setCreating(false);
+      return;
+    }
+    createEnvironment(newName);
+    setNewName('');
+    setCreating(false);
+  };
+
+  const handleImportFiles = async (files: FileList | null) => {
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      try {
+        const parsed = JSON.parse(await file.text());
+        importEnvironment(parsed);
+      } catch {
+        // Skip files that aren't valid environment exports
+      }
+    }
+    setIsOpen(true);
+  };
+
+  return (
+    <div>
+      <SectionHeader
+        icon={<Layers size={14} className="text-text-secondary" />}
+        label={t('environments.title')}
+        count={environments.length}
+        isOpen={isOpen}
+        onToggle={() => setIsOpen(!isOpen)}
+        actions={
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              multiple
+              hidden
+              onChange={(e) => {
+                handleImportFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              className="p-1 rounded hover:bg-panel-light text-text-muted hover:text-accent transition-colors"
+              title={t('environments.importEnvironment')}
+            >
+              <Upload size={13} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(true);
+                setCreating(true);
+              }}
+              className="p-1 rounded hover:bg-panel-light text-text-muted hover:text-accent transition-colors"
+              title={t('environments.newEnvironment')}
+            >
+              <Plus size={13} />
+            </button>
+          </>
+        }
+      />
+      {isOpen && (
+        <>
+          {creating && (
+            <div className="flex items-center gap-1 px-3 py-2 border-b border-border/50">
+              <input
+                autoFocus
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreate();
+                  if (e.key === 'Escape') setCreating(false);
+                }}
+                onBlur={handleCreate}
+                placeholder={t('environments.namePlaceholder')}
+                className="flex-1 bg-app-bg border border-border rounded px-2 py-1 text-xs text-text-primary focus:outline-none focus:border-accent"
+              />
+            </div>
+          )}
+          {environments.length === 0 && !creating ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2 text-text-muted">
+              <Layers size={22} className="opacity-50" />
+              <p className="text-xs text-center px-4">{t('environments.noEnvironments')}</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {environments.map((e) => (
+                <EnvironmentRow key={e.id} environment={e} isActive={e.id === activeEnvironmentId} />
               ))}
             </div>
           )}
@@ -517,6 +732,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           <ChevronRight size={16} />
         </button>
         <div className="mt-4 flex flex-col gap-3">
+          <Layers size={16} className="text-text-muted" />
           <Folder size={16} className="text-text-muted" />
           <History size={16} className="text-text-muted" />
         </div>
@@ -536,6 +752,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         </button>
       </div>
       <div className="flex-1 overflow-y-auto">
+        <EnvironmentsSection />
         <CollectionsSection />
         <HistorySection />
       </div>
