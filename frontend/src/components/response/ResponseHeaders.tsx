@@ -18,7 +18,7 @@ export function ResponseHeaders({ headers }: ResponseHeadersProps) {
   }
 
   return (
-    <div className="overflow-auto">
+    <div className="h-full overflow-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border">

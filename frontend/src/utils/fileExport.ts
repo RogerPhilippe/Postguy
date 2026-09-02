@@ -1,5 +1,5 @@
-export function downloadJson(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+export function downloadText(filename: string, content: string, mimeType = 'text/plain') {
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -8,6 +8,10 @@ export function downloadJson(filename: string, data: unknown) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export function downloadJson(filename: string, data: unknown) {
+  downloadText(filename, JSON.stringify(data, null, 2), 'application/json');
 }
 
 export function sanitizeFilename(name: string): string {
