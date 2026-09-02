@@ -50,13 +50,24 @@ class ProxyService {
                         }
                     }
                     "x-www-form-urlencoded" -> {
-                        // body is a URL-encoded form string (e.g. key1=val1&key2=val2)
+                        // Our own body editor serializes the key-value pairs as a JSON array
+                        // string (same as form-data). Fall back to a literal
+                        // "key1=val1&key2=val2" string for any other producer.
                         if (config.body.isNotBlank()) {
-                            val params = Parameters.build {
-                                config.body.split("&").forEach { pair ->
-                                    val parts = pair.split("=", limit = 2)
-                                    if (parts.size == 2) {
-                                        append(parts[0].trim(), parts[1].trim())
+                            val params = try {
+                                val pairs = kotlinx.serialization.json.Json.decodeFromString<List<KeyValuePair>>(config.body)
+                                Parameters.build {
+                                    pairs.filter { it.enabled && it.key.isNotBlank() }.forEach { pair ->
+                                        append(pair.key, pair.value)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                Parameters.build {
+                                    config.body.split("&").forEach { pair ->
+                                        val parts = pair.split("=", limit = 2)
+                                        if (parts.size == 2) {
+                                            append(parts[0].trim(), parts[1].trim())
+                                        }
                                     }
                                 }
                             }

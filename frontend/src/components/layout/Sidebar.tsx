@@ -26,6 +26,7 @@ import { formatDate } from '../../utils/formatter';
 import { HttpMethod } from '../../types/request';
 import { useT } from '../../i18n/useT';
 import { downloadJson, sanitizeFilename } from '../../utils/fileExport';
+import { convertExternalCollection, isExternalCollectionFormat } from '../../utils/externalCollectionImport';
 
 const METHOD_COLORS: Record<HttpMethod, string> = {
   GET: 'text-emerald-400',
@@ -403,7 +404,12 @@ function CollectionsSection() {
     for (const file of Array.from(files)) {
       try {
         const parsed = JSON.parse(await file.text());
-        importCollection(parsed);
+        // Postguy's own export shape ({ name, items }) is tried first; only
+        // convert if it doesn't already look like ours.
+        const imported = importCollection(parsed);
+        if (!imported && isExternalCollectionFormat(parsed)) {
+          importCollection(convertExternalCollection(parsed));
+        }
       } catch {
         // Skip files that aren't valid collection exports
       }

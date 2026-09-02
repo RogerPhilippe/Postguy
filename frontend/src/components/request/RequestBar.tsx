@@ -2,9 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { Send, Copy, Check, Loader2 } from 'lucide-react';
 import { useTabsStore } from '../../store/tabsStore';
 import { useSendRequest } from '../../hooks/useRequest';
-import { HttpMethod, KeyValuePair } from '../../types/request';
+import { HttpMethod } from '../../types/request';
 import { toCurl } from '../../utils/curlExporter';
-import { v4 as uuidv4 } from 'uuid';
+import { parseUrlParams } from '../../utils/url';
 import { useT } from '../../i18n/useT';
 
 const HTTP_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
@@ -21,32 +21,6 @@ const METHOD_COLORS: Record<HttpMethod, string> = {
 
 interface RequestBarProps {
   tabId: string;
-}
-
-function parseUrlParams(url: string): KeyValuePair[] {
-  try {
-    const parsed = new URL(url);
-    const pairs: KeyValuePair[] = [];
-    parsed.searchParams.forEach((value, key) => {
-      pairs.push({ id: uuidv4(), key, value, enabled: true });
-    });
-    return pairs;
-  } catch {
-    // Try parsing just the query string portion
-    const questionIdx = url.indexOf('?');
-    if (questionIdx === -1) return [];
-    try {
-      const search = url.slice(questionIdx + 1);
-      const params = new URLSearchParams(search);
-      const pairs: KeyValuePair[] = [];
-      params.forEach((value, key) => {
-        pairs.push({ id: uuidv4(), key, value, enabled: true });
-      });
-      return pairs;
-    } catch {
-      return [];
-    }
-  }
 }
 
 export function RequestBar({ tabId }: RequestBarProps) {
