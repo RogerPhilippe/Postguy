@@ -13,6 +13,7 @@ import io.postguy.proxy.RequestConfig
 
 fun Application.configureRouting() {
     val proxyService = ProxyService()
+    environment.monitor.subscribe(ApplicationStopped) { proxyService.close() }
 
     install(StatusPages) {
         exception<Throwable> { call, cause ->
