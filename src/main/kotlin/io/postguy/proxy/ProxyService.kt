@@ -97,7 +97,7 @@ class ProxyService {
             }
         }
 
-        val bodyBytes = response.readBytes()
+        val bodyBytes = response.readRawBytes()
         val bodyStr = bodyBytes.toString(Charsets.UTF_8)
         val responseHeaders = response.headers.entries()
             .associate { it.key to it.value.joinToString(", ") }
