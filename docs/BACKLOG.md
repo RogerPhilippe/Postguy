@@ -61,6 +61,51 @@ the browser — a plain file response/upload.
   in `application.yaml`?), and what a minimal migration/schema story looks
   like given there's no such tooling in the project today.
 
+## P2P collection sharing via invite (open for study, not started)
+
+Idea: let two users share Collections directly with each other via an
+invite code, without either side opening/forwarding a port. Uses WebRTC
+DataChannels (peer-to-peer, DTLS-encrypted) between the two frontends,
+with a minimal signaling server only for the handshake — no central
+storage of shared data, no open ports on the user's machine.
+
+Depends on the [server-side SQLite storage](#move-collections-to-a-server-side-sqlite-database-open-for-study)
+item above being resolved first — sharing needs a persistent, addressable
+Collection to share, and a notion of ownership per Collection.
+
+Rough shape:
+
+- **Signaling server** — small WebSocket service (ours to host) that only
+  relays SDP offer/answer and ICE candidates between the two peers while
+  they connect. Sees no Collection data, stores nothing persistent.
+- **STUN** — public/free (e.g. `stun.l.google.com`) for NAT hole-punching,
+  so most direct connections need no relay at all.
+- **TURN fallback** — needed for robustness; hole-punching fails for a
+  meaningful share of real users (symmetric NAT/CGNAT). Self-hosted
+  `coturn` or a paid TURN provider. Without it, some invites simply won't
+  connect.
+- **Device identity** — each install generates a keypair (WebCrypto) on
+  first run; no account/password. An invite code encodes the inviter's
+  signaling ID + public key, with an expiry.
+- **Sharing model** — a Collection gains an `owner` + list of peers with
+  read/write access, stored alongside it in SQLite.
+- **Sync** — on connect, the DataChannel pushes the collections the owner
+  marked as shared; both sides need to be online simultaneously (this is
+  P2P, not an always-on server), so no offline/async sharing without
+  reintroducing some central storage — a tradeoff to accept explicitly.
+
+**Open questions to resolve before designing this:**
+
+- Who hosts the signaling/TURN infra long-term, and what's the cost/who
+  pays for TURN relay bandwidth if hole-punching fails often.
+- Revoking a shared collection / removing a peer's access after the fact.
+- Conflict resolution if both sides edit a shared Collection while
+  connected (last-write-wins? owner-authoritative?).
+- How invite codes are exchanged out-of-band (copy/paste text, QR code,
+  link?) and how long they stay valid.
+- Whether History or only Collections are shareable, mirroring the open
+  question in the SQLite item above.
+
 ## Technical debt: variables aren't picked up from external collection imports
 
 Postguy now supports Environments (named sets of `{{key}}` variables,
